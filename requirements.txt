@@ -1,0 +1,15 @@
+--extra-index-url https://download.pytorch.org/whl/cu130
+torch
+torchvision
+mmcv-full
+mmsegmentation
+opencv-python-headless
+albumentations
+transformers
+datasets
+wandb
+hydra-core
+scikit-learn
+numpy
+matplotlib
+-e .

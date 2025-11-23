@@ -121,6 +121,8 @@ structure: List[str] = [
     f"{PROJECT_FOLDER}/Dockerfile",
     f"{PROJECT_FOLDER}/requirements.txt",
     f"{PROJECT_FOLDER}/README.md",
+    f"{PROJECT_FOLDER}/setup.py",
+    f"{PROJECT_FOLDER}/demo.py",
 ]
 
 def create_project_structure(structure: List[str]) -> None:
@@ -150,6 +152,16 @@ def create_project_structure(structure: List[str]) -> None:
                 content = "# Auto-generated file by template.py\n"
             elif path.suffix in ['.yaml', '.yml']:
                 content = "# YAML configuration file\n"
+            
+            if "setup.py" in path.name:
+                content = (
+                    "from setuptools import setup, find_packages\n\n"
+                    "setup(\n"
+                    "    name='end-to-end-semantic-segmentation',\n"
+                    "    packages=find_packages(),\n"
+                    "    install_requires=[],  # Add your dependencies here\n"
+                    ")\n"
+                )
             else:
                 content = ""
             with open(path, 'w', encoding='utf-8') as f:
