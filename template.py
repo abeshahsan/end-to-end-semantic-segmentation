@@ -117,6 +117,8 @@ structure: List[str] = [
     f"{PROJECT_FOLDER}/scripts/infer.py",
     f"{PROJECT_FOLDER}/scripts/export.py",
     f"{PROJECT_FOLDER}/experiments/.gitkeep",
+    f"{PROJECT_FOLDER}/exceptions/__init__.py",
+    f"{PROJECT_FOLDER}/loggers/__init__.py",
     f"{PROJECT_FOLDER}/saved_models/.gitkeep",
     f"{PROJECT_FOLDER}/Dockerfile",
     f"{PROJECT_FOLDER}/requirements.txt",
