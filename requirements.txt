@@ -1,15 +1,16 @@
---extra-index-url https://download.pytorch.org/whl/cu130
-torch
-torchvision
-mmcv-full
-mmsegmentation
-opencv-python-headless
-albumentations
-transformers
-datasets
-wandb
-hydra-core
-scikit-learn
+--extra-index-url https://download.pytorch.org/whl/cu118
 numpy
 matplotlib
+scikit-learn
+tqdm
+ftfy
+datasets
+torch
+torchvision
+albumentations
+transformers
+wandb
+hydra-core
+pytorch-lightning
+jupyter
 -e .

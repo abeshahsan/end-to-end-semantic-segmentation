@@ -3,7 +3,7 @@ import datetime
 import os
 
 LOG_FOLDER = "logs"
-LOGGER_NAME = "sem-seg"
+LOGGER_NAME = "sem_seg"
 if not os.path.exists(LOG_FOLDER):
     os.makedirs(LOG_FOLDER)
 
