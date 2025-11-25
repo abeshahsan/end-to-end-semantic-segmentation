@@ -1,8 +1,9 @@
 import logging
 import datetime
 import os
+from utils.constants import PROJECT_ROOT
 
-LOG_FOLDER = "logs"
+LOG_FOLDER = f"{PROJECT_ROOT}/logs"
 LOGGER_NAME = "sem_seg"
 if not os.path.exists(LOG_FOLDER):
     os.makedirs(LOG_FOLDER)
