@@ -32,7 +32,7 @@ class SegformerTransform:
         # Convert mask to tensor
         mask_tensor = torch.as_tensor(masks, dtype=torch.long)
         mask_tensor = self.resize_mask(
-            mask_tensor, size=pixel_values.shape[1:3]
+            mask_tensor, size=pixel_values.shape[-2:]
         )  # Resize mask to match image size
 
         return pixel_values, mask_tensor
