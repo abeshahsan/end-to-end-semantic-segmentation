@@ -17,6 +17,7 @@ class SemSegBaseException(Exception):
             f"[{self.__class__.__name__}] in {fname} at line {line_no}: {self.message}"
         )
 
+
 class ConfigError(SemSegBaseException):
     """Raised when configuration loading or validation fails."""
 
@@ -35,8 +36,20 @@ class PreprocessingError(SemSegBaseException):
     pass
 
 
-class PostprocessingError(SemSegBaseException):
-    """Raised during postprocessing (argmax, color mapping, resizing)."""
+class DataTransformException(SemSegBaseException):
+    """Raised when data transformation fails."""
+
+    pass
+
+
+class DatasetException(SemSegBaseException):
+    """Raised for dataset related errors."""
+
+    pass
+
+
+class SegformerLitException(SemSegBaseException):
+    """Base exception for SegformerLitWrapper related errors."""
 
     pass
 
