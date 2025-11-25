@@ -1,1 +1,133 @@
-# YAML configuration file
+experiment:
+    name: segformer_ade20k_training
+    seed: 42
+    output_dir: experiments
+
+paths:
+    data_root: data/ade20k
+    train_images: ${paths.data_root}/images/train
+    train_masks: ${paths.data_root}/masks/train
+    val_images: ${paths.data_root}/images/val
+    val_masks: ${paths.data_root}/masks/val
+    logs_dir: logs
+    checkpoints_dir: saved_models
+    predictions_dir: experiments/predictions
+
+data:
+    dataset_class: datasets.segformer_dataset.SegformerDataset
+    transform_class: datasets.transforms.SegformerTransform
+    processor_name: ${model.backbone.pretrained_name}
+    image_size: 512
+    ignore_index: ${model.ignore_index}
+    train_loader:
+        batch_size: 4
+        shuffle: true
+        num_workers: 4
+        pin_memory: true
+        drop_last: false
+    val_loader:
+        batch_size: 4
+        shuffle: false
+        num_workers: 4
+        pin_memory: true
+        drop_last: false
+
+model:
+    lit_wrapper: SegformerLitWrapper
+    num_classes: 150
+    ignore_index: 255
+    backbone:
+        pretrained_name: nvidia/segformer-b0-finetuned-ade-512-512
+        revision: null
+        load_pretrained_weights: true
+        freeze_encoder: false
+    decoder:
+        dropout: 0.0
+        classifier_dropout: 0.1
+
+optimization:
+    optimizer:
+        _target_: torch.optim.AdamW
+        lr: 1.0e-4
+        weight_decay: 0.01
+        betas: [0.9, 0.999]
+        eps: 1.0e-08
+    scheduler:
+        _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+        T_max: 50000
+        eta_min: 1.0e-6
+        warmup_enabled: true
+        warmup_steps: 1500
+    gradient_clip_val: 1.0
+    accumulate_grad_batches: 1
+
+trainer:
+    accelerator: auto
+    devices: 1
+    strategy: null
+    precision: 16
+    deterministic: false
+    detect_anomaly: false
+    benchmark: false
+    max_epochs: 50
+    max_steps: null
+    check_val_every_n_epoch: 1
+    log_every_n_steps: 10
+    limit_train_batches: null
+    limit_val_batches: null
+    gradient_clip_algorithm: norm
+    callbacks:
+        checkpoint:
+            enabled: true
+            target: pytorch_lightning.callbacks.ModelCheckpoint
+            params:
+                dirpath: ${paths.checkpoints_dir}
+                filename: segformer-{epoch:02d}-{val_loss:.4f}
+                monitor: val_loss
+                mode: min
+                save_top_k: 3
+        early_stopping:
+            enabled: true
+            target: pytorch_lightning.callbacks.EarlyStopping
+            params:
+                monitor: val_loss
+                mode: min
+                patience: 8
+        learning_rate_monitor:
+            enabled: true
+            target: pytorch_lightning.callbacks.LearningRateMonitor
+            params:
+                logging_interval: step
+
+logging:
+    level: INFO
+    save_dir: ${paths.logs_dir}
+    flush_logs_every_n_steps: 50
+    tensorboard:
+        enabled: true
+        name: ${experiment.name}
+    wandb:
+        enabled: false
+        project: semseg
+        entity: null
+        run_name: ${experiment.name}
+
+evaluation:
+    metrics:
+        - name: mean_iou
+          target: training.metrics.mean_iou
+          params:
+              num_classes: ${model.num_classes}
+              ignore_index: ${model.ignore_index}
+        - name: pixel_accuracy
+          target: training.metrics.pixel_accuracy
+          params:
+              ignore_index: ${model.ignore_index}
+
+checkpointing:
+    resume_from: null
+    load_strict: true
+
+reproducibility:
+    cudnn_deterministic: false
+    cudnn_benchmark: true

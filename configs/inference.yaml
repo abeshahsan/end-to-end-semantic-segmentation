@@ -1,1 +1,55 @@
-# YAML configuration file
+experiment:
+    name: segformer_ade20k_inference
+
+paths:
+    data_root: data/ade20k
+    image_dir: ${paths.data_root}/images/val
+    mask_dir: null
+    checkpoint_path: saved_models/segformer/latest.ckpt
+    output_dir: experiments/inference
+    color_map: null
+
+model:
+    pretrained_name: nvidia/segformer-b5-finetuned-ade-640-640
+    num_classes: 150
+    ignore_index: 255
+    device: auto
+    half_precision: true
+    compile: false
+
+data:
+    transform_class: datasets.transforms.SegformerTransform
+    processor_name: ${model.pretrained_name}
+    image_size: 640
+    batch_size: 1
+    num_workers: 2
+    pin_memory: true
+    stride: null
+
+postprocessing:
+    apply_softmax: true
+    output_type: argmax
+    save_raw_logits: false
+    resize_back_to_original: true
+
+visualization:
+    enabled: true
+    overlay_alpha: 0.6
+    palette: ade20k
+    draw_legend: true
+    save_masks: true
+    save_blended: true
+
+logging:
+    level: INFO
+    save_predictions: true
+    print_every_n_images: 25
+
+export:
+    onnx:
+        enabled: false
+        path: saved_models/segformer/segformer.onnx
+        opset: 16
+    torchscript:
+        enabled: false
+        path: saved_models/segformer/segformer.ts

@@ -12,8 +12,7 @@
 # )
 
 # logger.info(gpu_message)
-# # 
-
+# #
 
 
 # model_name = "nvidia/segformer-b5-finetuned-ade-640-640"
@@ -27,7 +26,7 @@
 
 # if isinstance(model, tuple):
 #     model = model[0]
-    
+
 
 # image = Image.open("image.png").convert("RGB")
 # inputs = processor(images=image, return_tensors="pt")
@@ -37,6 +36,24 @@
 
 # seg = outputs.logits  # (batch, 150, h, w) for ADE20K (150 classes)
 
+from dataclasses import dataclass
 from from_root import from_root
-root_dir = from_root()
-print(f"Root directory path: {root_dir}")
+import hydra
+
+from utils.constants import PROJECT_ROOT
+from dataclasses import dataclass, replace
+from logger import logger
+from omegaconf import DictConfig, OmegaConf
+from pathlib import Path
+
+
+conf = None
+@hydra.main(
+    config_path=f"{PROJECT_ROOT}/configs", config_name="train", version_base=None
+)
+def load_config(cfg: DictConfig) -> None:
+    global conf
+    conf = cfg
+
+load_config()
+
