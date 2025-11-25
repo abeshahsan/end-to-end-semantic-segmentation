@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import pytorch_lightning as pl
 import torch
 from transformers import SegformerForSemanticSegmentation
@@ -7,14 +8,21 @@ from logger import logger
 from exceptions import SegformerLitException
 
 
+@dataclass
+class SegformerLitConfig:
+    learning_rate: float
+    num_classes: int
+    ignore_index: int
+
+
 class SegformerLitWrapper(pl.LightningModule):
     def __init__(
-        self, model: SegformerForSemanticSegmentation, learning_rate: float = 1e-4
+        self, model: SegformerForSemanticSegmentation, config: SegformerLitConfig
     ):
         try:
             super().__init__()
             self.model = model
-            self.learning_rate = learning_rate
+            self.config = config
             self.criterion = torch.nn.CrossEntropyLoss(ignore_index=255)
             self.train_acc = MulticlassAccuracy(num_classes=150, ignore_index=255)
             self.val_acc = MulticlassAccuracy(num_classes=150, ignore_index=255)
@@ -72,5 +80,7 @@ class SegformerLitWrapper(pl.LightningModule):
         logger.info(f"Epoch {self.current_epoch} finished.")
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
+        optimizer = torch.optim.Adam(
+            self.model.parameters(), lr=self.config.learning_rate
+        )
         return optimizer
