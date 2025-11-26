@@ -4,7 +4,6 @@ warnings.filterwarnings("ignore")
 
 
 import os
-import hydra
 import torch
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
@@ -25,12 +24,9 @@ from transformers import (
 
 import logging
 
-logger = logging.getLogger("sem_seg")
+logger = logging.getLogger(__name__)
 
 
-@hydra.main(
-    config_path=f"{PROJECT_ROOT}/configs", config_name="train", version_base=None
-)
 def run_training(cfg):
     logger.info("Starting training process")
 
@@ -95,7 +91,8 @@ def run_training(cfg):
             enable_checkpointing=cfg.trainer.enable_checkpointing,
             enable_progress_bar=cfg.trainer.enable_progress_bar,
             enable_model_summary=cfg.trainer.enable_model_summary,
-            default_root_dir=PROJECT_ROOT,
+            default_root_dir=cfg.trainer.default_root_dir,
+            limit_train_batches=10,
         )
     except Exception as e:
         raise TrainingException(f"Failed to initialize trainer: {e}")

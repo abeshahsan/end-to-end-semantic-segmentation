@@ -9,7 +9,7 @@ from exceptions import SegformerLitException
 import logging
 
 
-logger = logging.getLogger("sem_seg")
+logger = logging.getLogger(__name__)
 
 
 @dataclass

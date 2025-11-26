@@ -1,3 +1,9 @@
+hydra_run_dir: logs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+
+hydra:
+    run:
+        dir: ${hydra_run_dir}
+
 paths:
     dataset_root: data/ade20k
     train_images: images/train
@@ -57,10 +63,11 @@ lit_wrapper:
 trainer:
     max_epochs: 100
     precision: 16
-    log_every_n_steps: 10
+    log_every_n_steps: 2
     enable_checkpointing: true
     enable_progress_bar: true
     enable_model_summary: false
+    default_root_dir: ${hydra_run_dir}
     callbacks:
         model_checkpoint:
             monitor: val_mean_iou
