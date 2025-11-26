@@ -1,3 +1,10 @@
+paths:
+    dataset_root: data/ade20k
+    train_images: images/train
+    train_masks: masks/train
+    val_images: images/val
+    val_masks: masks/val
+
 models:
     segformer:
         variant:
@@ -16,7 +23,7 @@ dataset:
     num_classes: 150
     ignore_index: 255
 
-data_loader:
+dataloader:
     train:
         batch_size: 4
         shuffle: true
@@ -49,10 +56,11 @@ lit_wrapper:
 
 trainer:
     max_epochs: 100
-    gpus: 1
     precision: 16
     log_every_n_steps: 10
-    checkpoint_callback: true
+    enable_checkpointing: true
+    enable_progress_bar: true
+    enable_model_summary: false
     callbacks:
         model_checkpoint:
             monitor: val_mean_iou
@@ -62,11 +70,9 @@ trainer:
 
 optimizer:
     name: AdamW
-    params:
-        lr: ${lit_wrapper.segformer.learning_rate}
-        weight_decay: ${lit_wrapper.segformer.weight_decay}
+    lr: ${lit_wrapper.segformer.learning_rate}
+    weight_decay: ${lit_wrapper.segformer.weight_decay}
 scheduler:
     name: PolyLR
-    params:
-        max_epochs: ${trainer.max_epochs}
-        power: 0.9
+    max_epochs: ${trainer.max_epochs}
+    power: 0.9

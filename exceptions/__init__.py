@@ -29,6 +29,10 @@ class DataLoadError(SemSegBaseException):
 
     pass
 
+class TrainingException(SemSegBaseException):
+    """Raised during training process errors."""
+
+    pass
 
 class PreprocessingError(SemSegBaseException):
     """Raised during input preprocessing (transforms, normalization, etc.)."""

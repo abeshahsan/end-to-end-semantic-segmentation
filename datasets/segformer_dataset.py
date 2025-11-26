@@ -10,7 +10,7 @@ from datasets.transforms import SegformerTransform
 from exceptions import DatasetException
 
 
-class SegformerDataset(Dataset):
+class ADE20KDataset(Dataset):
     def __init__(
         self, root, img_dir, mask_dir, transforms: Union[SegformerTransform, T.Compose]
     ):
