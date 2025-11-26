@@ -5,8 +5,11 @@ import torch
 from transformers import SegformerForSemanticSegmentation
 import torchvision.transforms.functional as TF
 from torchmetrics.classification import MulticlassAccuracy, MulticlassJaccardIndex
-from logger import logger
 from exceptions import SegformerLitException
+import logging
+
+
+logger = logging.getLogger("sem_seg")
 
 
 @dataclass

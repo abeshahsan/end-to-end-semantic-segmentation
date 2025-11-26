@@ -1,4 +1,6 @@
-# Training setup
+import warnings
+
+warnings.filterwarnings("ignore")
 
 
 import os
@@ -8,7 +10,6 @@ from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from transformers import SegformerConfig, SegformerForSemanticSegmentation
 from datasets.segformer_dataset import ADE20KDataset
-from logger import logger
 from models.lit_wrappers import SegformerLitWrapper
 from models.lit_wrappers.segformer_wrapper import SegformerLitConfig
 from utils.constants import PROJECT_ROOT
@@ -22,9 +23,9 @@ from transformers import (
     SegformerImageProcessor,
 )
 
-import warnings
+import logging
 
-warnings.filterwarnings("ignore")
+logger = logging.getLogger("sem_seg")
 
 
 @hydra.main(

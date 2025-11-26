@@ -1,4 +1,4 @@
-from .sem_seg import logger
+from .sem_seg import setup_logger
 
 
-__all__ = ["logger"]
+__all__ = ["setup_logger"]
