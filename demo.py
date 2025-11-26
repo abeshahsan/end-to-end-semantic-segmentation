@@ -42,18 +42,17 @@ import hydra
 
 from utils.constants import PROJECT_ROOT
 from dataclasses import dataclass, replace
-from logger import logger
+# from logger import logger
 from omegaconf import DictConfig, OmegaConf
 from pathlib import Path
 
 
-conf = None
 @hydra.main(
     config_path=f"{PROJECT_ROOT}/configs", config_name="train", version_base=None
 )
 def load_config(cfg: DictConfig) -> None:
-    global conf
-    conf = cfg
+    print(OmegaConf.to_yaml(cfg))
+    print(cfg.models.segformer)
 
 load_config()
 

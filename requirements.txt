@@ -12,5 +12,6 @@ transformers
 wandb
 hydra-core
 pytorch-lightning
+torchmetrics
 jupyter
 -e .
