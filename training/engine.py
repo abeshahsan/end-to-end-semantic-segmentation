@@ -1,28 +1,21 @@
-import warnings
-
-warnings.filterwarnings("ignore")
-
-
+import logging
 import os
+
+import pytorch_lightning as pl
 import torch
 from torch.utils.data import DataLoader
-import pytorch_lightning as pl
-from transformers import SegformerConfig, SegformerForSemanticSegmentation
-from datasets.segformer_dataset import ADE20KDataset
-from models.lit_wrappers import SegformerLitWrapper
-from models.lit_wrappers.segformer_wrapper import SegformerLitConfig
-from utils.constants import PROJECT_ROOT
-from datasets.transforms import SegformerTransform
-
-from exceptions import TrainingException
-
 from transformers import (
     SegformerConfig,
     SegformerForSemanticSegmentation,
     SegformerImageProcessor,
 )
 
-import logging
+from datasets.segformer_dataset import ADE20KDataset
+from datasets.transforms import SegformerTransform
+from exceptions import TrainingException
+from models.lit_wrappers import SegformerLitWrapper
+from models.lit_wrappers.segformer_wrapper import SegformerLitConfig
+from utils.constants import PROJECT_ROOT
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +25,6 @@ def run_training(cfg):
 
     try:
         segformer_config = SegformerConfig.from_pretrained(
-            cfg.models.segformer.variant.b0.huggingface_name
-        )
-        segformer_improc = SegformerImageProcessor.from_pretrained(
             cfg.models.segformer.variant.b0.huggingface_name
         )
 
@@ -50,7 +40,9 @@ def run_training(cfg):
     logger.info("Configs built successfully")
 
     try:
-        transform = SegformerTransform(image_processor=segformer_improc)
+        transform = SegformerTransform.from_pretrained(
+            cfg.models.segformer.variant.b0.huggingface_name
+        )
         train_dataset = ADE20KDataset(
             root=os.path.join(PROJECT_ROOT, cfg.paths.dataset_root),
             img_dir=cfg.paths.train_images,

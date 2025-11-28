@@ -1,48 +1,48 @@
-from typing import Union
+from typing import Optional, Union
+
 import numpy as np
 import torch
-from transformers import SegformerImageProcessor
 from PIL import Image
+from transformers import SegformerImageProcessor
+
 from exceptions import DataTransformException
 
 
-class SegformerTransform:
-    r"""
-    Transform class to preprocess images and masks for Segformer model.
-    Uses SegformerImageProcessor for image preprocessing and resizes masks accordingly.
-    Args:
-        image_processor (SegformerImageProcessor): Pretrained Segformer image processor.
-    Returns:
-        A tuple of (preprocessed_image_tensor, resized_mask_tensor).
-    """
-
-    def __init__(self, image_processor: SegformerImageProcessor):
+class SegformerTransform(SegformerImageProcessor):
+    def __init__(self, **kwargs):
         try:
-            self.image_processor = image_processor
+            super().__init__(**kwargs)
         except Exception as e:
             raise DataTransformException(f"Initialization failed: {str(e)}") from e
 
     def __call__(
         self,
         images: Union[Image.Image, np.ndarray],
-        masks: Union[Image.Image, np.ndarray],
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+        masks: Optional[Union[Image.Image, np.ndarray]] = None,
+    ) -> tuple[torch.Tensor, torch.Tensor] | torch.Tensor:
+        r"""
+        Args:
+            images (Union[Image.Image, np.ndarray]): Input image or batch of images.
+            masks (Optional[Union[Image.Image, np.ndarray]]): Corresponding mask or batch of masks.
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor] | torch.Tensor: Processed pixel values and masks
+        """
         try:
             if isinstance(images, Image.Image):
                 images = np.array(images)
-            if isinstance(masks, Image.Image):
+            if masks is not None and isinstance(masks, Image.Image):
                 masks = np.array(masks)
 
-            encoding = self.image_processor(images=images, return_tensors="pt")
+            encoding = super().__call__(images=images)
             pixel_values = encoding.pixel_values.squeeze()  # Remove batch dimension
 
-            # Convert mask to tensor
-            mask_tensor = torch.as_tensor(masks, dtype=torch.long)
-            mask_tensor = self.resize_mask(
-                mask_tensor, size=pixel_values.shape[-2:]
-            )  # Resize mask to match image size
-
-            return pixel_values, mask_tensor
+            if masks is not None:
+                mask_tensor = torch.as_tensor(masks, dtype=torch.long)
+                mask_tensor = self.resize_mask(
+                    mask_tensor, size=pixel_values.shape[-2:]
+                )  # Resize mask to match image size
+                return pixel_values, mask_tensor
+            return pixel_values
         except Exception as e:
             raise DataTransformException(f"Data transformation failed: {str(e)}") from e
 
