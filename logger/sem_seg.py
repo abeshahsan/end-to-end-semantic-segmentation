@@ -1,10 +1,6 @@
 import logging
 
-from lightning_utilities.core.rank_zero import rank_zero_only
-
-
-@rank_zero_only  # ensures ONLY main process initializes logging
-def setup_logger(log_file: str, level: int) -> None:
+def setup_logger(log_file: str | None, level: int = logging.INFO) -> None:
     logger = logging.getLogger()
 
     if logger.hasHandlers():
@@ -17,10 +13,10 @@ def setup_logger(log_file: str, level: int) -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    # file handler
-    file_handler = logging.FileHandler(log_file)
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
+    if log_file:
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
 
     # stdout handler
     stream_handler = logging.StreamHandler()

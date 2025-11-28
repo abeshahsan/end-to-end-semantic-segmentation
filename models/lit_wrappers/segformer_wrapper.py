@@ -1,13 +1,14 @@
-from dataclasses import dataclass
-import pytorch_lightning as pl
-from sympy import beta
-import torch
-from transformers import SegformerForSemanticSegmentation
-import torchvision.transforms.functional as TF
-from torchmetrics.classification import MulticlassAccuracy, MulticlassJaccardIndex
-from exceptions import SegformerLitException
 import logging
+from dataclasses import dataclass
 
+import pytorch_lightning as pl
+import torch
+import torchvision.transforms.functional as TF
+from sympy import beta
+from torchmetrics.classification import MulticlassAccuracy, MulticlassJaccardIndex
+from transformers import SegformerForSemanticSegmentation
+
+from exceptions import SegformerLitException
 
 logger = logging.getLogger(__name__)
 

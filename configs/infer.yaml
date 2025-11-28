@@ -1,0 +1,22 @@
+hydra_run_dir: logs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+
+hydra:
+    run:
+        dir: ${hydra_run_dir}
+
+paths:
+    inference_results: inference_results
+    inference_inputs: inference_inputs
+
+models:
+    segformer:
+        variant:
+            b0:
+                huggingface_name: nvidia/segformer-b0-finetuned-ade-512-512
+                image_size: 512
+            b2:
+                huggingface_name: nvidia/segformer-b2-finetuned-ade-512-512
+                image_size: 512
+            b5:
+                huggingface_name: nvidia/segformer-b5-finetuned-ade-640-640
+                image_size: 640

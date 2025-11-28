@@ -36,6 +36,14 @@
 
 # seg = outputs.logits  # (batch, 150, h, w) for ADE20K (150 classes)
 
+def fn():
+    return 2, None
+
+x,_ = fn()
+print(x)
+
+exit(0)
+
 from dataclasses import dataclass
 from from_root import from_root
 import hydra

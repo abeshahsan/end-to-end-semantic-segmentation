@@ -209,4 +209,6 @@ __marimo__/
 logs/
 data/
 outputs/
+inference_inputs/
+inference_results/
 **/lightning_logs/

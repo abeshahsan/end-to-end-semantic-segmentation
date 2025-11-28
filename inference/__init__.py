@@ -1,1 +1,1 @@
-# Auto-generated file by template.py
+from .predictor import run_inference

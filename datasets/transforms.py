@@ -33,8 +33,11 @@ class SegformerTransform(SegformerImageProcessor):
             if masks is not None and isinstance(masks, Image.Image):
                 masks = np.array(masks)
 
-            encoding = super().__call__(images=images)
-            pixel_values = encoding.pixel_values.squeeze()  # Remove batch dimension
+            encoding = super().__call__(images=images, return_tensors="pt")
+
+            pixel_values = encoding.pixel_values.squeeze(
+                0
+            )  # Remove batch dimension, cs we are gonna collate later
 
             if masks is not None:
                 mask_tensor = torch.as_tensor(masks, dtype=torch.long)
@@ -57,4 +60,4 @@ class SegformerTransform(SegformerImageProcessor):
         )
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(image_processor={self.image_processor})"
+        return f"{self.__class__.__name__}({self.to_json_string()})"
