@@ -1,12 +1,16 @@
 import logging
+
 from lightning_utilities.core.rank_zero import rank_zero_only
 
 
 @rank_zero_only  # ensures ONLY main process initializes logging
-def setup_logger(name: str, log_file: str, level: int) -> logging.Logger:
-    logger = logging.getLogger(name)
+def setup_logger(log_file: str, level: int) -> None:
+    logger = logging.getLogger()
+
+    if logger.hasHandlers():
+        return  # Logger is already set up
+
     logger.setLevel(level)
-    logger.propagate = False
 
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
