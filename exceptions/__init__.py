@@ -29,10 +29,12 @@ class DataLoadError(SemSegBaseException):
 
     pass
 
+
 class TrainingException(SemSegBaseException):
     """Raised during training process errors."""
 
     pass
+
 
 class PreprocessingError(SemSegBaseException):
     """Raised during input preprocessing (transforms, normalization, etc.)."""
@@ -58,14 +60,14 @@ class SegformerLitException(SemSegBaseException):
     pass
 
 
-class ModelLoadError(SemSegBaseException):
-    """Raised when model weights or architecture cannot be loaded."""
+class ModelLoadException(SemSegBaseException):
+    """Raised when model loading or initialization fails."""
 
     pass
 
 
-class InferenceError(SemSegBaseException):
-    """Raised when model inference fails at runtime."""
+class InferenceException(SemSegBaseException):
+    """Raised during inference process errors."""
 
     pass
 
