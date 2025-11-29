@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ZoomIn, ZoomOut, Download, Copy, Check, ArrowLeft, RefreshCw } from 'lucide-react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { ZoomIn, ZoomOut, Download, Copy, Check, ArrowLeft, RefreshCw, Move } from 'lucide-react';
 import clsx from 'clsx';
 import type { SegmentationResult } from '../types';
 
@@ -13,9 +13,63 @@ export default function ResultsView({ result, onBack, onNewImage }: ResultsViewP
   const [zoom, setZoom] = useState(100);
   const [overlayMode, setOverlayMode] = useState<'mask' | 'blend'>('mask');
   const [copied, setCopied] = useState(false);
+  
+  // Pan/drag state
+  const [isDragging, setIsDragging] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const dragStart = useRef({ x: 0, y: 0 });
+  const containerRef1 = useRef<HTMLDivElement>(null);
+  const containerRef2 = useRef<HTMLDivElement>(null);
+  const imageGridRef = useRef<HTMLDivElement>(null);
 
-  const handleZoomIn = () => setZoom((z) => Math.min(z + 25, 200));
-  const handleZoomOut = () => setZoom((z) => Math.max(z - 25, 50));
+  const handleZoomIn = () => setZoom((z) => Math.min(z + 25, 300));
+  const handleZoomOut = () => {
+    setZoom((z) => Math.max(z - 25, 50));
+  };
+
+  // Mouse drag handlers - works at any zoom level
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    setIsDragging(true);
+    dragStart.current = { x: e.clientX - position.x, y: e.clientY - position.y };
+    e.preventDefault();
+  }, [position]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDragging) return;
+    const newX = e.clientX - dragStart.current.x;
+    const newY = e.clientY - dragStart.current.y;
+    setPosition({ x: newX, y: newY });
+  }, [isDragging]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // Scroll wheel zoom handler - using native event listener to properly prevent default
+  useEffect(() => {
+    const element = imageGridRef.current;
+    if (!element) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const delta = e.deltaY > 0 ? -10 : 10;
+      setZoom((z) => Math.min(Math.max(z + delta, 50), 300));
+    };
+
+    element.addEventListener('wheel', handleWheel, { passive: false });
+    return () => element.removeEventListener('wheel', handleWheel);
+  }, []);
+
+  // Reset pan position
+  const handleResetView = useCallback(() => {
+    setPosition({ x: 0, y: 0 });
+    setZoom(100);
+  }, []);
 
   const handleCopyEndpoint = async () => {
     await navigator.clipboard.writeText(`POST /segment?model=${result.modelUsed}`);
@@ -92,6 +146,15 @@ export default function ResultsView({ result, onBack, onNewImage }: ResultsViewP
           >
             <ZoomIn className="w-4 h-4 text-slate-600" />
           </button>
+          <button
+            onClick={handleResetView}
+            className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors ml-2"
+            aria-label="Reset view"
+            title="Reset zoom and position"
+          >
+            <Move className="w-4 h-4 text-slate-600" />
+          </button>
+          <span className="text-xs text-slate-500 ml-2">Drag to pan</span>
         </div>
 
         <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
@@ -121,31 +184,70 @@ export default function ResultsView({ result, onBack, onNewImage }: ResultsViewP
       </div>
 
       {/* Image Comparison */}
-      <div className="grid md:grid-cols-2 gap-4 mb-8">
+      <div 
+        ref={imageGridRef}
+        className="grid md:grid-cols-2 gap-4 mb-8 select-none"
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+      >
         <div className="bg-slate-100 rounded-xl p-4">
           <h3 className="text-sm font-medium text-slate-600 mb-3">Original Image</h3>
-          <div className="overflow-auto rounded-lg bg-white" style={{ maxHeight: '400px' }}>
-            <img
-              src={result.originalImage}
-              alt="Original"
-              className="mx-auto transition-transform duration-200"
-              style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top left' }}
-            />
+          <div 
+            ref={containerRef1}
+            onMouseDown={handleMouseDown}
+            className={clsx(
+              "overflow-hidden rounded-lg bg-white flex items-center justify-center",
+              isDragging ? 'cursor-grabbing' : 'cursor-grab'
+            )}
+            style={{ height: '400px' }}
+          >
+            <div 
+              className="flex items-center justify-center"
+              style={{ 
+                transform: `translate(${position.x}px, ${position.y}px) scale(${zoom / 100})`,
+                transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+                transformOrigin: 'center center'
+              }}
+            >
+              <img
+                src={result.originalImage}
+                alt="Original"
+                className="max-w-none select-none pointer-events-none"
+                draggable={false}
+              />
+            </div>
           </div>
         </div>
         <div className="bg-slate-100 rounded-xl p-4">
           <h3 className="text-sm font-medium text-slate-600 mb-3">Segmented Output</h3>
-          <div className="overflow-auto rounded-lg bg-white" style={{ maxHeight: '400px' }}>
-            <img
-              src={overlayMode === 'mask' ? result.maskImage : result.segmentedImage}
-              alt="Segmented"
-              className="mx-auto transition-transform duration-200"
+          <div 
+            ref={containerRef2}
+            onMouseDown={handleMouseDown}
+            className={clsx(
+              "overflow-hidden rounded-lg bg-white flex items-center justify-center",
+              isDragging ? 'cursor-grabbing' : 'cursor-grab'
+            )}
+            style={{ height: '400px' }}
+          >
+            <div 
+              className="flex items-center justify-center"
               style={{ 
-                transform: `scale(${zoom / 100})`, 
-                transformOrigin: 'top left',
-                opacity: overlayMode === 'blend' ? 0.8 : 1
+                transform: `translate(${position.x}px, ${position.y}px) scale(${zoom / 100})`,
+                transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+                transformOrigin: 'center center'
               }}
-            />
+            >
+              <img
+                src={overlayMode === 'mask' ? result.maskImage : result.segmentedImage}
+                alt="Segmented"
+                className="max-w-none select-none pointer-events-none"
+                style={{ 
+                  opacity: overlayMode === 'blend' ? 0.8 : 1
+                }}
+                draggable={false}
+              />
+            </div>
           </div>
         </div>
       </div>
