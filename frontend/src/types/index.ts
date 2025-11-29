@@ -11,6 +11,7 @@ export interface SegmentationResult {
   processingTime: number;
   modelUsed: string;
   confidence: number;
+  imageName: string;
   metadata: {
     classes: string[];
     width: number;

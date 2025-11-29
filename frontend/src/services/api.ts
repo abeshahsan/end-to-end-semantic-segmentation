@@ -47,6 +47,7 @@ export async function segmentImage(
           processingTime: 2.3,
           modelUsed: modelId,
           confidence: 92,
+          imageName: file.name,
           metadata: {
             classes: ['background', 'person', 'car', 'building', 'vegetation'],
             width: 512,

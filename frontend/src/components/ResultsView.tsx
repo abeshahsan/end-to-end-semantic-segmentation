@@ -24,7 +24,7 @@ export default function ResultsView({ result, onBack, onNewImage }: ResultsViewP
 
   const handleZoomIn = () => setZoom((z) => Math.min(z + 25, 300));
   const handleZoomOut = () => {
-    setZoom((z) => Math.max(z - 25, 50));
+    setZoom((z) => Math.max(z - 25, 25));
   };
 
   // Mouse drag handlers - works at any zoom level
@@ -58,7 +58,7 @@ export default function ResultsView({ result, onBack, onNewImage }: ResultsViewP
       e.preventDefault();
       e.stopPropagation();
       const delta = e.deltaY > 0 ? -10 : 10;
-      setZoom((z) => Math.min(Math.max(z + delta, 50), 300));
+      setZoom((z) => Math.min(Math.max(z + delta, 25), 300));
     };
 
     element.addEventListener('wheel', handleWheel, { passive: false });
@@ -80,20 +80,24 @@ export default function ResultsView({ result, onBack, onNewImage }: ResultsViewP
   const handleDownload = (type: 'mask' | 'full' | 'metadata') => {
     let url: string;
     let filename: string;
+    
+    // Get base name without extension
+    const baseName = result.imageName.replace(/\.[^/.]+$/, '');
+    const prefix = `segment_ai_${baseName}`;
 
     switch (type) {
       case 'mask':
         url = result.maskImage;
-        filename = 'segmentation-mask.png';
+        filename = `${prefix}_mask.png`;
         break;
       case 'full':
         url = result.segmentedImage;
-        filename = 'segmented-result.jpg';
+        filename = `${prefix}_result.jpg`;
         break;
       case 'metadata': {
         const metadata = JSON.stringify(result.metadata, null, 2);
         url = `data:application/json;charset=utf-8,${encodeURIComponent(metadata)}`;
-        filename = 'segmentation-metadata.json';
+        filename = `${prefix}_metadata.json`;
         break;
       }
     }
@@ -111,6 +115,16 @@ export default function ResultsView({ result, onBack, onNewImage }: ResultsViewP
       {/* Stats Bar */}
       <div className="bg-slate-100 rounded-lg p-4 mb-6">
         <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
+          <div className="flex items-center">
+            <span className="text-slate-500">Image:</span>{' '}
+            <span 
+              className="font-semibold text-slate-800 max-w-[150px] truncate inline-block align-bottom"
+              title={result.imageName}
+            >
+              {result.imageName}
+            </span>
+          </div>
+          <div className="hidden sm:block w-px h-4 bg-slate-300" />
           <div>
             <span className="text-slate-500">Processing Time:</span>{' '}
             <span className="font-semibold text-slate-800">{result.processingTime.toFixed(1)}s</span>
@@ -203,7 +217,7 @@ export default function ResultsView({ result, onBack, onNewImage }: ResultsViewP
             style={{ height: '400px' }}
           >
             <div 
-              className="flex items-center justify-center"
+              className="flex items-center justify-center w-full h-full"
               style={{ 
                 transform: `translate(${position.x}px, ${position.y}px) scale(${zoom / 100})`,
                 transition: isDragging ? 'none' : 'transform 0.1s ease-out',
@@ -213,7 +227,7 @@ export default function ResultsView({ result, onBack, onNewImage }: ResultsViewP
               <img
                 src={result.originalImage}
                 alt="Original"
-                className="max-w-none select-none pointer-events-none"
+                className="max-w-full max-h-full object-contain select-none pointer-events-none"
                 draggable={false}
               />
             </div>
@@ -231,7 +245,7 @@ export default function ResultsView({ result, onBack, onNewImage }: ResultsViewP
             style={{ height: '400px' }}
           >
             <div 
-              className="flex items-center justify-center"
+              className="flex items-center justify-center w-full h-full"
               style={{ 
                 transform: `translate(${position.x}px, ${position.y}px) scale(${zoom / 100})`,
                 transition: isDragging ? 'none' : 'transform 0.1s ease-out',
@@ -241,7 +255,7 @@ export default function ResultsView({ result, onBack, onNewImage }: ResultsViewP
               <img
                 src={overlayMode === 'mask' ? result.maskImage : result.segmentedImage}
                 alt="Segmented"
-                className="max-w-none select-none pointer-events-none"
+                className="max-w-full max-h-full object-contain select-none pointer-events-none"
                 style={{ 
                   opacity: overlayMode === 'blend' ? 0.8 : 1
                 }}
