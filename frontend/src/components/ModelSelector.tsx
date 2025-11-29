@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ChevronDown, Info } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Check } from 'lucide-react';
 import clsx from 'clsx';
 import type { ModelOption } from '../types';
 
@@ -11,82 +11,82 @@ interface ModelSelectorProps {
 }
 
 export default function ModelSelector({ models, selectedModel, onSelect, disabled }: ModelSelectorProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [hoveredModel, setHoveredModel] = useState<string | null>(null);
-
   const selected = models.find((m) => m.id === selectedModel);
 
   return (
-    <div className="relative">
-      <label className="block text-sm font-medium text-slate-700 mb-2">
+    <div>
+      <label className="block text-sm font-medium text-stone-600 mb-3">
         Select Model
       </label>
-      <button
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-        disabled={disabled}
-        className={clsx(
-          'w-full flex items-center justify-between px-4 py-3 rounded-lg border transition-all',
-          'bg-white text-left',
-          disabled
-            ? 'border-slate-200 text-slate-400 cursor-not-allowed'
-            : 'border-slate-300 hover:border-blue-400 text-slate-700'
-        )}
-        aria-haspopup="listbox"
-        aria-expanded={isOpen}
-      >
-        <span className="font-medium">{selected?.name || 'Select a model'}</span>
-        <ChevronDown
-          className={clsx(
-            'w-5 h-5 text-slate-400 transition-transform',
-            isOpen && 'transform rotate-180'
-          )}
-        />
-      </button>
+      
+      <div className="grid grid-cols-3 gap-3">
+        {models.map((model) => {
+          const isSelected = model.id === selectedModel;
+          const Icon = model.icon;
+          
+          return (
+            <motion.button
+              key={model.id}
+              onClick={() => !disabled && onSelect(model.id)}
+              disabled={disabled}
+              className={clsx(
+                'relative flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-200',
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2',
+                isSelected
+                  ? 'border-teal-500 bg-teal-50/50'
+                  : 'border-stone-200 hover:border-teal-300 hover:bg-stone-50',
+                disabled && 'opacity-50 cursor-not-allowed'
+              )}
+              whileHover={{ scale: disabled ? 1 : 1.02 }}
+              whileTap={{ scale: disabled ? 1 : 0.98 }}
+            >
+              <AnimatePresence>
+                {isSelected && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    exit={{ scale: 0 }}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-teal-500 rounded-full flex items-center justify-center shadow-md"
+                  >
+                    <Check className="w-3 h-3 text-white" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              
+              <div className={clsx(
+                'p-2 rounded-lg transition-colors',
+                isSelected ? 'bg-teal-100' : 'bg-stone-100'
+              )}>
+                {Icon && <Icon className={clsx(
+                  'w-5 h-5',
+                  isSelected ? 'text-teal-600' : 'text-stone-500'
+                )} />}
+              </div>
+              
+              <span className={clsx(
+                'text-sm font-medium',
+                isSelected ? 'text-teal-700' : 'text-stone-600'
+              )}>
+                {model.name}
+              </span>
+            </motion.button>
+          );
+        })}
+      </div>
 
-      {isOpen && !disabled && (
-        <>
-          <div
-            className="fixed inset-0 z-10"
-            onClick={() => setIsOpen(false)}
-          />
-          <ul
-            className="absolute z-20 w-full mt-2 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden"
-            role="listbox"
+      <AnimatePresence mode="wait">
+        {selected && (
+          <motion.p 
+            key={selected.id}
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -5 }}
+            className="text-xs text-stone-400 mt-3 text-center"
           >
-            {models.map((model) => (
-              <li
-                key={model.id}
-                onClick={() => {
-                  onSelect(model.id);
-                  setIsOpen(false);
-                }}
-                onMouseEnter={() => setHoveredModel(model.id)}
-                onMouseLeave={() => setHoveredModel(null)}
-                className={clsx(
-                  'px-4 py-3 cursor-pointer transition-colors',
-                  model.id === selectedModel
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'hover:bg-slate-50 text-slate-700'
-                )}
-                role="option"
-                aria-selected={model.id === selectedModel}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">{model.name}</span>
-                  <Info className="w-4 h-4 text-slate-400" />
-                </div>
-                {hoveredModel === model.id && (
-                  <p className="text-xs text-slate-500 mt-1">{model.description}</p>
-                )}
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-
-      {selected && (
-        <p className="text-xs text-slate-500 mt-2">{selected.description}</p>
-      )}
+            {selected.description}
+          </motion.p>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

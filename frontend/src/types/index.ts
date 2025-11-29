@@ -1,7 +1,10 @@
+import type { LucideIcon } from 'lucide-react';
+
 export interface ModelOption {
   id: string;
   name: string;
   description: string;
+  icon?: LucideIcon;
 }
 
 export interface SegmentationResult {

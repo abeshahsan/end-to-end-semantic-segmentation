@@ -1,53 +1,66 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
+import { Layers } from "lucide-react";
 
 export default function Header() {
-  const location = useLocation();
+	const location = useLocation();
 
-  return (
-    <header className="bg-white border-b border-slate-200">
-      <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <svg
-              className="w-5 h-5 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
-            </svg>
-          </div>
-          <span className="font-semibold text-slate-800">SegmentAI</span>
-        </Link>
+	return (
+		<header className='bg-white/80 backdrop-blur-md border-b border-stone-200 sticky top-0 z-50'>
+			<div className='max-w-6xl mx-auto px-4 py-3 flex items-center justify-between'>
+				<Link
+					to='/'
+					className='flex items-center gap-2.5 group'
+				>
+					<motion.div
+						className='w-9 h-9 bg-linear-to-br from-teal-500 to-teal-600 rounded-xl flex items-center justify-center shadow-md shadow-teal-500/20'
+						whileHover={{ scale: 1.05, rotate: -3 }}
+						whileTap={{ scale: 0.95 }}
+					>
+						<Layers className='w-5 h-5 text-white' />
+					</motion.div>
+					<span className='font-semibold text-stone-800 text-lg tracking-tight group-hover:text-teal-700 transition-colors'>
+						SegmentAI
+					</span>
+				</Link>
 
-        <nav className="flex items-center gap-6">
-          <Link
-            to="/"
-            className={`text-sm font-medium transition-colors ${
-              location.pathname === '/'
-                ? 'text-blue-600'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Home
-          </Link>
-          <Link
-            to="/about"
-            className={`text-sm font-medium transition-colors ${
-              location.pathname === '/about'
-                ? 'text-blue-600'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            About
-          </Link>
-        </nav>
-      </div>
-    </header>
-  );
+				<nav className='flex items-center gap-1'>
+					<Link
+						to='/'
+						className={`relative px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+							location.pathname === "/"
+								? "text-teal-700"
+								: "text-stone-500 hover:text-stone-800 hover:bg-stone-100"
+						}`}
+					>
+						{location.pathname === "/" && (
+							<motion.div
+								layoutId='nav-indicator'
+								className='absolute inset-0 bg-teal-50 rounded-lg border border-teal-200/50'
+								transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
+							/>
+						)}
+						<span className='relative z-10'>Home</span>
+					</Link>
+					<Link
+						to='/about'
+						className={`relative px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+							location.pathname === "/about"
+								? "text-teal-700"
+								: "text-stone-500 hover:text-stone-800 hover:bg-stone-100"
+						}`}
+					>
+						{location.pathname === "/about" && (
+							<motion.div
+								layoutId='nav-indicator'
+								className='absolute inset-0 bg-teal-50 rounded-lg border border-teal-200/50'
+								transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
+							/>
+						)}
+						<span className='relative z-10'>About</span>
+					</Link>
+				</nav>
+			</div>
+		</header>
+	);
 }
