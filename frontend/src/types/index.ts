@@ -8,18 +8,14 @@ export interface ModelOption {
 }
 
 export interface SegmentationResult {
-	originalImage: string;
-	segmentedImage: string;
-	maskImage: string;
-	processingTime: number;
-	modelUsed: string;
-	confidence: number;
-	imageName: string;
-	metadata: {
-		classes: string[];
-		width: number;
-		height: number;
-	};
+	success: boolean;
+	mask: string; // blob URL for PNG
+	overlay?: string; // blob URL for overlay PNG (if requested)
+	original?: string; // blob URL for original (if requested)
+	height: number;
+	width: number;
+	classes: string[];
+	imageName: string; // added client-side
 }
 
 export interface UploadError {

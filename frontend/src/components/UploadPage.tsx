@@ -36,6 +36,7 @@ export default function UploadPage() {
 	const [selectedModel, setSelectedModel] = useState<string>(MODELS[0].id);
 	const [error, setError] = useState<UploadError | null>(null);
 	const [result, setResult] = useState<SegmentationResult | null>(null);
+	const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
 
 	const handleFileSelect = useCallback((file: File) => {
 		const validation = validateFile(file);
@@ -49,12 +50,15 @@ export default function UploadPage() {
 		}
 		setError(null);
 		setSelectedFile(file);
+		setOriginalImageUrl(URL.createObjectURL(file));
 	}, []);
 
 	const handleClearFile = useCallback(() => {
+		if (originalImageUrl) URL.revokeObjectURL(originalImageUrl);
 		setSelectedFile(null);
+		setOriginalImageUrl(null);
 		setError(null);
-	}, []);
+	}, [originalImageUrl]);
 
 	const handleDismissError = useCallback(() => {
 		setError(null);
@@ -65,7 +69,7 @@ export default function UploadPage() {
 
 		setAppState("processing");
 		try {
-			const segmentationResult = await segmentImage(selectedFile, selectedModel);
+			const segmentationResult = await segmentImage(selectedFile);
 			setResult(segmentationResult);
 			setAppState("results");
 		} catch (err) {
@@ -76,7 +80,7 @@ export default function UploadPage() {
 			});
 			setAppState("error");
 		}
-	}, [selectedFile, selectedModel]);
+	}, [selectedFile]);
 
 	const handleCancel = useCallback(() => {
 		setAppState("upload");
@@ -87,19 +91,23 @@ export default function UploadPage() {
 	}, []);
 
 	const handleNewImage = useCallback(() => {
+		if (originalImageUrl) URL.revokeObjectURL(originalImageUrl);
+		if (result?.mask) URL.revokeObjectURL(result.mask);
 		setSelectedFile(null);
+		setOriginalImageUrl(null);
 		setResult(null);
 		setError(null);
 		setAppState("upload");
-	}, []);
+	}, [originalImageUrl, result]);
 
 	const selectedModelName = MODELS.find((m) => m.id === selectedModel)?.name || selectedModel;
 
 	// Results view
-	if (appState === "results" && result) {
+	if (appState === "results" && result && originalImageUrl) {
 		return (
 			<ResultsView
 				result={result}
+				originalImage={originalImageUrl}
 				onBack={handleBack}
 				onNewImage={handleNewImage}
 			/>

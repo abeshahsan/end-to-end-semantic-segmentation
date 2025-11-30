@@ -12,20 +12,27 @@ import {
 	FileImage,
 	FileJson,
 	Image,
+	Layers,
+	Square,
 } from "lucide-react";
 import clsx from "clsx";
 import type { SegmentationResult } from "../types";
 
 interface ResultsViewProps {
 	result: SegmentationResult;
+	originalImage: string; // blob URL of original uploaded image
 	onBack: () => void;
 	onNewImage: () => void;
 }
 
-export default function ResultsView({ result, onBack, onNewImage }: ResultsViewProps) {
+type ViewMode = "mask" | "blend";
+
+export default function ResultsView({ result, originalImage, onBack, onNewImage }: ResultsViewProps) {
 	const [zoom, setZoom] = useState(100);
-	const [overlayMode, setOverlayMode] = useState<"mask" | "blend">("mask");
 	const [copied, setCopied] = useState(false);
+	const [viewMode, setViewMode] = useState<ViewMode>("mask");
+	const [blendedImage, setBlendedImage] = useState<string | null>(null);
+	const [blendOpacity, setBlendOpacity] = useState(0.5);
 
 	// Pan/drag state
 	const [isDragging, setIsDragging] = useState(false);
@@ -35,12 +42,50 @@ export default function ResultsView({ result, onBack, onNewImage }: ResultsViewP
 	const containerRef2 = useRef<HTMLDivElement>(null);
 	const imageGridRef = useRef<HTMLDivElement>(null);
 
-	const handleZoomIn = () => setZoom((z) => Math.min(z + 25, 300));
-	const handleZoomOut = () => {
-		setZoom((z) => Math.max(z - 25, 25));
+	const loadImage = (src: string): Promise<HTMLImageElement> => {
+		return new Promise((resolve, reject) => {
+			const img = new window.Image();
+			img.crossOrigin = "anonymous";
+			img.onload = () => resolve(img);
+			img.onerror = reject;
+			img.src = src;
+		});
 	};
 
-	// Mouse drag handlers - works at any zoom level
+	// Create blended image when mode changes or opacity changes
+	useEffect(() => {
+		if (viewMode !== "blend") return;
+
+		const createBlendedImage = async () => {
+			const canvas = document.createElement("canvas");
+			const ctx = canvas.getContext("2d");
+			if (!ctx) return;
+
+			// Load both images
+			const [origImg, maskImg] = await Promise.all([
+				loadImage(originalImage),
+				loadImage(result.mask),
+			]);
+
+			canvas.width = origImg.width;
+			canvas.height = origImg.height;
+
+			// Draw original
+			ctx.drawImage(origImg, 0, 0);
+
+			// Draw mask with opacity
+			ctx.globalAlpha = blendOpacity;
+			ctx.drawImage(maskImg, 0, 0, canvas.width, canvas.height);
+
+			setBlendedImage(canvas.toDataURL("image/png"));
+		};
+
+		createBlendedImage();
+	}, [viewMode, originalImage, result.mask, blendOpacity]);
+
+	const handleZoomIn = () => setZoom((z) => Math.min(z + 25, 300));
+	const handleZoomOut = () => setZoom((z) => Math.max(z - 25, 25));
+
 	const handleMouseDown = useCallback(
 		(e: React.MouseEvent) => {
 			setIsDragging(true);
@@ -60,15 +105,9 @@ export default function ResultsView({ result, onBack, onNewImage }: ResultsViewP
 		[isDragging]
 	);
 
-	const handleMouseUp = useCallback(() => {
-		setIsDragging(false);
-	}, []);
+	const handleMouseUp = useCallback(() => setIsDragging(false), []);
+	const handleMouseLeave = useCallback(() => setIsDragging(false), []);
 
-	const handleMouseLeave = useCallback(() => {
-		setIsDragging(false);
-	}, []);
-
-	// Scroll wheel zoom handler - using native event listener to properly prevent default
 	useEffect(() => {
 		const element = imageGridRef.current;
 		if (!element) return;
@@ -84,50 +123,54 @@ export default function ResultsView({ result, onBack, onNewImage }: ResultsViewP
 		return () => element.removeEventListener("wheel", handleWheel);
 	}, []);
 
-	// Reset pan position
 	const handleResetView = useCallback(() => {
 		setPosition({ x: 0, y: 0 });
 		setZoom(100);
 	}, []);
 
 	const handleCopyEndpoint = async () => {
-		await navigator.clipboard.writeText(`POST /segment?model=${result.modelUsed}`);
+		await navigator.clipboard.writeText("POST /api/segment?mask_format=png");
 		setCopied(true);
 		setTimeout(() => setCopied(false), 2000);
 	};
 
-	const handleDownload = (type: "mask" | "full" | "metadata") => {
-		let url: string;
-		let filename: string;
-
-		// Get base name without extension
+	const handleDownload = (type: "mask" | "blend" | "metadata") => {
 		const baseName = result.imageName.replace(/\.[^/.]+$/, "");
 		const prefix = `segment_ai_${baseName}`;
 
-		switch (type) {
-			case "mask":
-				url = result.maskImage;
-				filename = `${prefix}_mask.png`;
-				break;
-			case "full":
-				url = result.segmentedImage;
-				filename = `${prefix}_result.jpg`;
-				break;
-			case "metadata": {
-				const metadata = JSON.stringify(result.metadata, null, 2);
-				url = `data:application/json;charset=utf-8,${encodeURIComponent(metadata)}`;
-				filename = `${prefix}_metadata.json`;
-				break;
-			}
+		if (type === "mask") {
+			const link = document.createElement("a");
+			link.href = result.mask;
+			link.download = `${prefix}_mask.png`;
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+		} else if (type === "blend" && blendedImage) {
+			const link = document.createElement("a");
+			link.href = blendedImage;
+			link.download = `${prefix}_blend.png`;
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+		} else if (type === "metadata") {
+			const metadata = JSON.stringify({
+				classes: result.classes,
+				width: result.width,
+				height: result.height,
+			}, null, 2);
+			const url = `data:application/json;charset=utf-8,${encodeURIComponent(metadata)}`;
+			const link = document.createElement("a");
+			link.href = url;
+			link.download = `${prefix}_metadata.json`;
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
 		}
-
-		const link = document.createElement("a");
-		link.href = url;
-		link.download = filename;
-		document.body.appendChild(link);
-		link.click();
-		document.body.removeChild(link);
 	};
+
+	// Get the right panel image based on view mode
+	const rightPanelImage = viewMode === "blend" ? blendedImage : result.mask;
+	const rightPanelLabel = viewMode === "blend" ? "Blended Overlay" : "Segmentation Mask";
 
 	return (
 		<motion.div
@@ -156,18 +199,13 @@ export default function ResultsView({ result, onBack, onNewImage }: ResultsViewP
 					</div>
 					<div className='hidden sm:block w-px h-4 bg-teal-200' />
 					<div>
-						<span className='text-stone-500'>Time:</span>{" "}
-						<span className='font-semibold text-stone-700'>{result.processingTime.toFixed(1)}s</span>
+						<span className='text-stone-500'>Size:</span>{" "}
+						<span className='font-semibold text-stone-700'>{result.width} × {result.height}</span>
 					</div>
 					<div className='hidden sm:block w-px h-4 bg-teal-200' />
 					<div>
-						<span className='text-stone-500'>Model:</span>{" "}
-						<span className='font-semibold text-stone-700 capitalize'>{result.modelUsed}</span>
-					</div>
-					<div className='hidden sm:block w-px h-4 bg-teal-200' />
-					<div>
-						<span className='text-stone-500'>Confidence:</span>{" "}
-						<span className='font-semibold text-teal-600'>{result.confidence}%</span>
+						<span className='text-stone-500'>Classes:</span>{" "}
+						<span className='font-semibold text-teal-600'>{result.classes.length}</span>
 					</div>
 				</div>
 			</motion.div>
@@ -179,6 +217,7 @@ export default function ResultsView({ result, onBack, onNewImage }: ResultsViewP
 				animate={{ opacity: 1 }}
 				transition={{ delay: 0.2 }}
 			>
+				{/* Zoom controls */}
 				<div className='flex items-center gap-1.5'>
 					<button
 						onClick={handleZoomOut}
@@ -206,29 +245,51 @@ export default function ResultsView({ result, onBack, onNewImage }: ResultsViewP
 					<span className='text-xs text-stone-400 ml-2 hidden sm:inline'>Scroll to zoom • Drag to pan</span>
 				</div>
 
-				<div className='flex items-center gap-1 bg-stone-100 p-1 rounded-lg'>
-					<button
-						onClick={() => setOverlayMode("mask")}
-						className={clsx(
-							"px-3 py-1.5 text-sm font-medium rounded-md transition-all",
-							overlayMode === "mask"
-								? "bg-white text-teal-700 shadow-sm"
-								: "text-stone-500 hover:text-stone-700"
-						)}
-					>
-						Mask
-					</button>
-					<button
-						onClick={() => setOverlayMode("blend")}
-						className={clsx(
-							"px-3 py-1.5 text-sm font-medium rounded-md transition-all",
-							overlayMode === "blend"
-								? "bg-white text-teal-700 shadow-sm"
-								: "text-stone-500 hover:text-stone-700"
-						)}
-					>
-						Blend
-					</button>
+				{/* View mode toggle */}
+				<div className='flex items-center gap-2'>
+					{/* Opacity slider (only shown in blend mode) */}
+					{viewMode === "blend" && (
+						<div className='flex items-center gap-2 mr-2'>
+							<span className='text-xs text-stone-500'>Opacity:</span>
+							<input
+								type='range'
+								min='0'
+								max='1'
+								step='0.1'
+								value={blendOpacity}
+								onChange={(e) => setBlendOpacity(parseFloat(e.target.value))}
+								className='w-20 h-1.5 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-teal-500'
+							/>
+							<span className='text-xs text-stone-600 w-8'>{Math.round(blendOpacity * 100)}%</span>
+						</div>
+					)}
+
+					<div className='flex bg-stone-100 rounded-lg p-1'>
+						<button
+							onClick={() => setViewMode("blend")}
+							className={clsx(
+								"flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
+								viewMode === "blend"
+									? "bg-white text-teal-600 shadow-sm"
+									: "text-stone-500 hover:text-stone-700"
+							)}
+						>
+							<Layers className='w-3.5 h-3.5' />
+							Blend
+						</button>
+						<button
+							onClick={() => setViewMode("mask")}
+							className={clsx(
+								"flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
+								viewMode === "mask"
+									? "bg-white text-teal-600 shadow-sm"
+									: "text-stone-500 hover:text-stone-700"
+							)}
+						>
+							<Square className='w-3.5 h-3.5' />
+							Mask
+						</button>
+					</div>
 				</div>
 			</motion.div>
 
@@ -266,7 +327,7 @@ export default function ResultsView({ result, onBack, onNewImage }: ResultsViewP
 							}}
 						>
 							<img
-								src={result.originalImage}
+								src={originalImage}
 								alt='Original'
 								className='max-w-full max-h-full object-contain select-none pointer-events-none'
 								draggable={false}
@@ -276,8 +337,8 @@ export default function ResultsView({ result, onBack, onNewImage }: ResultsViewP
 				</div>
 				<div className='bg-stone-100 rounded-xl p-4'>
 					<h3 className='text-sm font-medium text-stone-500 mb-3 flex items-center gap-2'>
-						<FileImage className='w-4 h-4' />
-						Segmented Output
+						{viewMode === "blend" ? <Layers className='w-4 h-4' /> : <FileImage className='w-4 h-4' />}
+						{rightPanelLabel}
 					</h3>
 					<div
 						ref={containerRef2}
@@ -296,15 +357,16 @@ export default function ResultsView({ result, onBack, onNewImage }: ResultsViewP
 								transformOrigin: "center center",
 							}}
 						>
-							<img
-								src={overlayMode === "mask" ? result.maskImage : result.segmentedImage}
-								alt='Segmented'
-								className='max-w-full max-h-full object-contain select-none pointer-events-none'
-								style={{
-									opacity: overlayMode === "blend" ? 0.8 : 1,
-								}}
-								draggable={false}
-							/>
+							{rightPanelImage ? (
+								<img
+									src={rightPanelImage}
+									alt={rightPanelLabel}
+									className='max-w-full max-h-full object-contain select-none pointer-events-none'
+									draggable={false}
+								/>
+							) : (
+								<div className='text-stone-400 text-sm'>Loading blend...</div>
+							)}
 						</div>
 					</div>
 				</div>
@@ -330,13 +392,14 @@ export default function ResultsView({ result, onBack, onNewImage }: ResultsViewP
 						<span className='font-medium text-stone-700'>Mask PNG</span>
 					</motion.button>
 					<motion.button
-						onClick={() => handleDownload("full")}
-						className='flex items-center justify-center gap-2 px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl hover:border-teal-400 hover:bg-teal-50 transition-all'
-						whileHover={{ scale: 1.02 }}
-						whileTap={{ scale: 0.98 }}
+						onClick={() => handleDownload("blend")}
+						disabled={!blendedImage}
+						className='flex items-center justify-center gap-2 px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl hover:border-teal-400 hover:bg-teal-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed'
+						whileHover={{ scale: blendedImage ? 1.02 : 1 }}
+						whileTap={{ scale: blendedImage ? 0.98 : 1 }}
 					>
-						<FileImage className='w-4 h-4 text-teal-600' />
-						<span className='font-medium text-stone-700'>Full JPG</span>
+						<Layers className='w-4 h-4 text-teal-600' />
+						<span className='font-medium text-stone-700'>Blend PNG</span>
 					</motion.button>
 					<motion.button
 						onClick={() => handleDownload("metadata")}
@@ -352,7 +415,7 @@ export default function ResultsView({ result, onBack, onNewImage }: ResultsViewP
 				<div className='flex items-center gap-2 p-3 bg-stone-50 rounded-lg border border-stone-100'>
 					<span className='text-sm text-stone-500'>API:</span>
 					<code className='flex-1 text-sm font-mono text-stone-600 truncate'>
-						POST /segment?model={result.modelUsed}
+						POST /api/segment?mask_format=png
 					</code>
 					<button
 						onClick={handleCopyEndpoint}
