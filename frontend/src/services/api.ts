@@ -2,15 +2,14 @@ import type { SegmentationResult } from "../types";
 
 export async function segmentImage(
 	file: File,
-	options: { overlay?: boolean; returnOriginal?: boolean } = {}
+	options: { model?: string } = {}
 ): Promise<SegmentationResult> {
 	const formData = new FormData();
 	formData.append("image", file);
 
 	const params = new URLSearchParams();
 	params.set("mask_format", "png");
-	if (options.overlay) params.set("overlay", "true");
-	if (options.returnOriginal) params.set("return_original", "true");
+	if (options.model) params.set("model", options.model);
 
 	const response = await fetch(`/api/segment?${params}`, {
 		method: "POST",
@@ -26,8 +25,6 @@ export async function segmentImage(
 	return {
 		success: data.success,
 		mask: `data:image/png;base64,${data.mask}`,
-		overlay: data.overlay ? `data:image/png;base64,${data.overlay}` : undefined,
-		original: data.original ? `data:image/png;base64,${data.original}` : undefined,
 		width: data.width,
 		height: data.height,
 		classes: data.classes,

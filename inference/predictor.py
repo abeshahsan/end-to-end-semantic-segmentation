@@ -1,5 +1,4 @@
 import logging
-import os
 from typing import List, Union
 
 import numpy as np
@@ -37,19 +36,45 @@ def _apply_colormap(mask: "np.ndarray", palette: list[int]) -> Image.Image:
 
 
 def run_inference(
-    cfg, image_paths: Union[List[str], List[os.PathLike], str, os.PathLike]
-) -> None:
-    logger.info("Starting inference process")
+    model: HFSegformer,
+    transform: SegformerTransform,
+    images: Union[
+        np.ndarray,
+        Image.Image,
+        torch.Tensor,
+        List[Union[np.ndarray, Image.Image, torch.Tensor]],
+    ],
+    return_type: str = "numpy",
+    device: Union[str, torch.device] = "cpu",
+    colormap: bool = True,
+) -> Union[
+    np.ndarray,
+    Image.Image,
+    torch.Tensor,
+    List[Union[np.ndarray, Image.Image, torch.Tensor]],
+]:
+    """
+    Run inference on in-memory images and return predictions.
+
+    Args:
+        model: Preloaded HFSegformer model.
+        transform: Preloaded SegformerTransform for preprocessing.
+        images: Single image or list of images (numpy arrays, PIL Images, or torch Tensors).
+        return_type: "numpy", "pil", or "tensor" to specify output format.
+        device: Device to run inference on ("cpu" or "cuda").
+        colormap: Whether to apply color map to output masks.
+    Returns:
+        Single prediction or list of predictions in specified format.
+    Raises:
+        InferenceException: If inference fails.
+    """
+
+    logger.info("Starting inference (in-memory) process")
 
     try:
-        transform = SegformerTransform.from_pretrained(
-            cfg.models.segformer.variant.b0.huggingface_name
-        )
-
-        segformer_model = HFSegformer.from_pretrained(
-            cfg.models.segformer.variant.b0.huggingface_name
-        )
-        num_classes = getattr(segformer_model.config, "num_labels", 150)
+        model = model.to(device)
+        model.eval()
+        num_classes = getattr(model.config, "num_labels", 150)
         palette = _build_color_palette(num_classes)
 
     except Exception as e:
@@ -57,32 +82,89 @@ def run_inference(
             f"Failed to set up model and transforms: {str(e)}"
         ) from e
 
-    logger.info("Model and transforms set up successfully")
+    def _to_pil(img: Union[np.ndarray, Image.Image, torch.Tensor]) -> Image.Image:
+        if isinstance(img, Image.Image):
+            return img.convert("RGB")
+        if isinstance(img, np.ndarray):
+            arr = img
+            if arr.dtype != np.uint8:
+                if arr.max() <= 1.0:
+                    arr = (arr * 255).astype("uint8")
+                else:
+                    arr = arr.astype("uint8")
+            if arr.ndim == 3 and arr.shape[2] == 3:
+                return Image.fromarray(arr).convert("RGB")
+            if arr.ndim == 2:
+                return Image.fromarray(arr).convert("RGB")
+            raise InferenceException("Unsupported numpy array shape for image")
+        if isinstance(img, torch.Tensor):
+            arr = img.detach().cpu().numpy()
+            if arr.ndim == 3 and arr.shape[0] in (1, 3, 4):
+                arr = np.transpose(arr, (1, 2, 0))
+            if arr.dtype != np.uint8:
+                if arr.max() <= 1.0:
+                    arr = (arr * 255).astype("uint8")
+                else:
+                    arr = arr.astype("uint8")
+            if arr.ndim == 3 and arr.shape[2] == 3:
+                return Image.fromarray(arr).convert("RGB")
+            if arr.ndim == 2:
+                return Image.fromarray(arr).convert("RGB")
+            raise InferenceException("Unsupported tensor shape for image")
+        raise InferenceException("Unsupported image type for conversion to PIL")
+
+    single_input = False
+    if not isinstance(images, list):
+        images = [images]
+        single_input = True
 
     try:
-        inference_results_path = cfg.paths.get("inference_results", "inference_results")
-        os.makedirs(inference_results_path, exist_ok=True)
-        outputs: List[tuple[Image.Image, str]] = []
+        results: List[Union[np.ndarray, Image.Image, torch.Tensor]] = []
 
-        for image_path in image_paths:
-            logger.info(f"Processing image: {image_path}")
-            image = Image.open(image_path).convert("RGB")
-            input = transform(images=image).unsqueeze(0)  # Add batch dimension
+        for img in images:
+            pil_img = _to_pil(img)
+            input_tensor = transform(images=pil_img).unsqueeze(0).to(device)
             with torch.no_grad():
-                output = torch.argmax(segformer_model(input).logits, dim=1)
-            output_np = output.squeeze().detach().cpu().numpy()
-            colorized_mask = _apply_colormap(output_np, palette)
-            colorized_mask = colorized_mask.resize(image.size, Image.Resampling.NEAREST)
-            outputs.append((colorized_mask, image_path))
+                logits = model(input_tensor).logits
+                preds = torch.argmax(logits, dim=1).squeeze(0)
 
-        for colorized_mask, image_path in outputs:
-            base_name = os.path.basename(image_path)
-            name, _ = os.path.splitext(base_name)
-            save_path = os.path.join(inference_results_path, f"infer_{name}.png")
-            colorized_mask.save(save_path)
-            logger.info(f"Saved segmentation mask to: {save_path}")
+            if return_type == "tensor":
+                if colormap:
+                    out_np = preds.detach().cpu().numpy().astype("uint8")
+                    colorized_mask = _apply_colormap(out_np, palette)
+                    colorized_mask = colorized_mask.resize(
+                        pil_img.size, Image.Resampling.NEAREST
+                    )
+                    arr = np.array(colorized_mask)
+                    out = torch.from_numpy(np.transpose(arr, (2, 0, 1))).to(torch.uint8)
+                else:
+                    out = preds.detach().cpu()
+            elif return_type == "pil":
+                out_np = preds.detach().cpu().numpy().astype("uint8")
+                if colormap:
+                    colorized_mask = _apply_colormap(out_np, palette)
+                    colorized_mask = colorized_mask.resize(
+                        pil_img.size, Image.Resampling.NEAREST
+                    )
+                    out = colorized_mask
+                else:
+                    gray = Image.fromarray(out_np, mode="L")
+                    gray = gray.resize(pil_img.size, Image.Resampling.NEAREST)
+                    out = gray
+            else:  # default to numpy
+                if colormap:
+                    out_np = preds.detach().cpu().numpy().astype("uint8")
+                    colorized_mask = _apply_colormap(out_np, palette)
+                    colorized_mask = colorized_mask.resize(
+                        pil_img.size, Image.Resampling.NEAREST
+                    )
+                    out = np.array(colorized_mask)
+                else:
+                    out = preds.detach().cpu().numpy()
+
+            results.append(out)
+
+        return results[0] if single_input else results
 
     except Exception as e:
         raise InferenceException(f"Inference failed: {str(e)}") from e
-
-    logger.info("Inference completed successfully")
