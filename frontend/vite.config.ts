@@ -11,7 +11,7 @@ export default defineConfig({
 			"/api": {
 				target: "http://127.0.0.1:8000", // The address of your backend API server
 				changeOrigin: true, // Needed for virtual hosted sites
-				rewrite: (path) => path.replace(/^\/api/, ""), // Remove the '/api' prefix when forwarding
+				rewrite: (path) => path,
 				ws: true, // Enable proxying of WebSockets
 			},
 		},

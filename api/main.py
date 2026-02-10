@@ -52,7 +52,7 @@ def image_to_base64(img: Image.Image, format: str = "PNG") -> str:
     return base64.b64encode(buffer.getvalue()).decode("utf-8")
 
 
-@app.post("/segment")
+@app.post("/api/segment")
 async def segment(
     image: UploadFile = File(...),
     mask_format: str = "png",
